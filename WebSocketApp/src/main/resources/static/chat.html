@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Chat Room</title>
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1.5.1/dist/sockjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+    <style>
+        #messages {
+            list-style-type: none;
+            padding: 0;
+        }
+        #messages li {
+            padding: 8px;
+            margin-bottom: 10px;
+            background-color: #f1f1f1;
+        }
+    </style>
+</head>
+<body>
+<h2>Chat Room</h2>
+<div>
+    <label for="username"></label><input type="text" id="username" placeholder="Enter your name"/>
+    <button onclick="connect()">Connect</button>
+</div>
+<ul id="messages"></ul>
+<label for="message"></label><input type="text" id="message" placeholder="Enter your message" onkeypress="sendMessage(event)"/>
+
+<script>
+    let stompClient = null;
+
+    function connect() {
+        const socket = new SockJS('/chat');
+        stompClient = Stomp.over(socket);
+        stompClient.connect({}, function(frame) {
+            document.getElementById('username').disabled = true;
+            stompClient.subscribe('/topic/messages', function(messageOutput) {
+                showMessage(JSON.parse(messageOutput.body));
+            });
+            stompClient.send("/app/addUser",
+                {},
+                JSON.stringify({sender: document.getElementById('username').value, type: 'JOIN'})
+            );
+        });
+    }
+
+    function sendMessage(event) {
+        if (event.keyCode === 13) {
+            var message = document.getElementById('message').value;
+            stompClient.send("/app/sendMessage", {}, JSON.stringify({sender: document.getElementById('username').value, content: message, type: 'CHAT'}));
+            document.getElementById('message').value = '';
+        }
+    }
+
+    function showMessage(message) {
+        const response = document.getElementById('messages');
+        const li = document.createElement('li');
+        li.appendChild(document.createTextNode(message.sender + ": " + message.content));
+        response.appendChild(li);
+    }
+</script>
+</body>
+</html>
